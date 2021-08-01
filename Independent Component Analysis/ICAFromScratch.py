@@ -16,6 +16,7 @@ from scipy import signal
 from scipy.io import wavfile
 from matplotlib import pyplot as plt
 import seaborn as sns
+from sklearn.decomposition import FastICA
 
 # Random Seed + Figure Sizes
 np.random.seed(0)
@@ -171,7 +172,66 @@ def audio_test_method():
     wavfile.write('Independent Component Analysis\AudioFiles\out\out1.wav', sample_rate, out1)
     wavfile.write('Independent Component Analysis\AudioFiles\out\out2.wav', sample_rate, out2)
 
+# test method using FastICA library on the same audio files
+def audio_test_FastICA():
+    # load files
+    sample_rate, mix1 = wavfile.read('Independent Component Analysis\AudioFiles\mix1.wav')
+    sample_rate, mix2 = wavfile.read('Independent Component Analysis\AudioFiles\mix2.wav')
+    sample_rate, source1 = wavfile.read('Independent Component Analysis\AudioFiles\source1.wav')
+    sample_rate, source2 = wavfile.read('Independent Component Analysis\AudioFiles\source2.wav')
+
+    print(f"** Sample rate: {sample_rate}")
+
+    # real sources
+    S = np.float64(np.c_[source1, source2])
+    S /= S.std()
+
+    # mixing matrix
+    A = np.array(([1, 1], [0.5, 2]))
+
+    # mixed signal
+    X = np.dot(S, A.T)
+
+    # ICA performed
+    print("Beginning ICA")
+    ica = FastICA(n_components=2)
+    S_ = ica.fit_transform(X)
+    print("ICA finished")
+    
+    # plot
+    print("Plotting")
+
+    fig = plt.figure()
+    models = [X, S, S_]
+    names = ['mixtures', 'real sources', 'predicted sources']
+    colors = ['red', 'blue', 'orange']
+    for i, (name, model) in enumerate(zip(names, models)):
+        plt.subplot(4, 1, i+1)
+        plt.title(name)
+        for sig, color in zip (model.T, colors):
+            plt.plot(sig, color=color)
+        
+    fig.tight_layout()        
+    plt.show()
+
+    # cast outputs to float32 arrays (for proper wav file)
+    print("Outputting")
+    out1 = np.float32(S_.T[0])
+    out2 = np.float32(S_.T[1])
+
+    # boost amplitude (volume)
+    boost_val = np.max(S.T[0])/np.max(S_.T[0])
+
+    out1 *= boost_val
+    out2 *= boost_val
+    
+    # write file to test results
+    wavfile.write('Independent Component Analysis\AudioFiles\out\out1fast.wav', sample_rate, out1)
+    wavfile.write('Independent Component Analysis\AudioFiles\out\out2fast.wav', sample_rate, out2)
+    print("saved")
+
 
 if __name__ == "__main__":
     #test_method()
-    audio_test_method()
+    #audio_test_method()
+    audio_test_FastICA()
